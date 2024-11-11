@@ -133,6 +133,7 @@ dmypy.json
 .intermediates
 results/*
 snakejob.*
+input
 input/*
 !input/HG002*
 !input/HG003*
@@ -152,3 +153,6 @@ figures/
 # Antimatch pattern:
 !README.md
 .run.sh
+
+# .jar files
+tools
