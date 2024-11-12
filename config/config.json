@@ -4,18 +4,16 @@
       "version": "GRCh38",
       "file_path": [
         "/",
-        "nlustre",
-        "users",
-        "graeme",
-        "PUBLIC",
-        "GRCh38",
-        "GRCh38.fa.gz"
+        "mnt",
+        "ICMM_HDD_12TB",
+        "REFERENCE_GRCh38",
+        "GRCh38_full_analysis_set_plus_decoy_hla.fa"
       ]
     }
   ],
   "environment": {
     "email": {
-      "address": "graeme.ford@tuks.co.za",
+      "address": "meganaholborn@gmail.com",
       "conditions": [
         "o",
         "e"
