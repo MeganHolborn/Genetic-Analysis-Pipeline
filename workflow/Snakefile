@@ -288,7 +288,7 @@ rule FILTER:
         # Filter out first- and second-degree related individuals and duplicate samples
         ## Create a linkage disequilibrium-pruned subset of the data and perform IBD calculations on this data subset. 
         shell(
-            r"plink2 --chr 1-22 --set-all-var-ids @:#\$r-\$a --new-id-max-allele-len 1033 --rm-dup exclude-mismatch --vcf results/FILTER/ALL_RENAMED.vcf.gz --indep-pairwise 50 5 0.5 --bad-ld --output-chr chr26 --out results/FILTER/ALL_LD; plink2 --allow-extra-chr --vcf results/FILTER/ALL_RENAMED.vcf.gz --extract results/FILTER/ALL_LD.prune.in --output-chr chr26 --export vcf-4.2 bgz --out results/FILTER/ALL_PRUNED; module load plink-1.9; plink --allow-extra-chr --vcf results/FILTER/ALL_PRUNED.vcf.gz --genome --min 0.2 --recode vcf-iid bgz --output-chr chr26 --out results/FILTER/ALL_UNRELATED"
+            r"plink2 --chr 1-22 --set-all-var-ids @:#\$r-\$a --new-id-max-allele-len 1033 --rm-dup exclude-mismatch --vcf results/FILTER/ALL_RENAMED.vcf.gz --indep-pairwise 50 5 0.5 --bad-ld --output-chr chr26 --out results/FILTER/ALL_LD; plink2 --allow-extra-chr --vcf results/FILTER/ALL_RENAMED.vcf.gz --extract results/FILTER/ALL_LD.prune.in --output-chr chr26 --export vcf-4.2 bgz --out results/FILTER/ALL_PRUNED; plink --allow-extra-chr --vcf results/FILTER/ALL_PRUNED.vcf.gz --genome --min 0.2 --recode vcf-iid bgz --output-chr chr26 --out results/FILTER/ALL_UNRELATED"
         ),
         ## Extract the sample IDs of all unrelated individuals and subset the filtered data by these individuals
         shell(
@@ -426,45 +426,3 @@ rule PLINK:
             shell(
                 r"plink2 --allow-extra-chr --vcf {input.vcf} --pheno iid-only results/REFERENCE/cluster_{cluster}.txt --loop-cats {cluster} --freq counts --missing --hardy midp --out results/FINAL/{cluster}/{params.prefix}"
             )
-
-
-# --indep-pairwise 50 5 .05 removed since this dataset has redundant variant names.
-
-
-# Add in VEP API calls
-# rule CALCULATIONS:
-#     """
-#     Perform Variant Effect prediction with the E! Ensembl VEP tool API.
-#     """
-#     log:
-#         "logs/VEP/{location}.log",
-#     input:
-#         vcf="results/FILTER/ALL_{location}_FILTERED.vcf.gz",
-#     output:
-#         expand("results/FINAL/{cluster}-{location}.xlsx"),
-#     params:
-#         transcript_id=lambda wildcards: config["locations"][wildcards.location][
-#             "GRCh38"
-#         ]["transcript_id"],
-#     resources:
-#         cpus=10,
-#         nodes=1,
-#         queue="normal",
-#         walltime="30:00:00",
-#     script:
-#         "scripts/02 - CALCULATIONS.py"
-# rule COMPILE_EXCEL:
-#     """
-#     Compile all calculations into final excel for distribution and analysis.
-#     """
-#     input:
-#         vcf="results/FILTER/ALL_{location}_FILTERED.vcf.gz",
-#     output:
-#         expand("results/FINAL/{cluster}-{location}.xlsx"),
-#     resources:
-#         cpus=10,
-#         nodes=1,
-#         queue="normal",
-#         walltime="30:00:00",
-#     script:
-#         "scripts/03 - MERGE.py"
