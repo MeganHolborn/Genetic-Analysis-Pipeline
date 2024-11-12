@@ -156,3 +156,4 @@ figures/
 
 # .jar files
 tools
+config/config.json
