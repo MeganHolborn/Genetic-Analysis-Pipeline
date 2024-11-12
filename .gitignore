@@ -144,6 +144,7 @@ final/
 logs/*
 figures/
 .snakemake/
+config/config.json
 
 # IDE-related folders:
 .idea/
@@ -156,4 +157,3 @@ figures/
 
 # .jar files
 tools
-config/config.json
