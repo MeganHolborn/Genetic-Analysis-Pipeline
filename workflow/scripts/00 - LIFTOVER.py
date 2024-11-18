@@ -49,22 +49,24 @@ listed_refs: list = datasets.loc[
 ].item()
 if listed_refs != "GRCh38":
     shell(
-        "echo 'Liftover required. All datasets have been mapped to {}'".format(
+        r"echo 'Liftover required. All datasets have been mapped to {}'".format(
             listed_refs
         )
     )
     if listed_refs == "GRCh37" or listed_refs == "Hg19":
-        shell("echo 'Lifting from GRCh37 to GRCh38.'"),
+        shell(r"echo 'Lifting from GRCh37 to GRCh38.'"),
         directoryExists("results/LIFTOVER")
         shell(
-            "plink2 --vcf results/PREP/{wildcards.sample}.vcf.gz --set-all-var-ids @:#\$r-\$a --allow-extra-chr --new-id-max-allele-len 40 truncate --chr 1-22 --out results/LIFTOVER/{wildcards.sample}_PREP --export vcf-4.2 bgz --output-chr chr26"
-        ),
-        shell("sleep 60; tabix -p vcf results/LIFTOVER/{wildcards.sample}_PREP.vcf.gz"),
-        shell(
-            "java {params.mem} -jar tools/picard.jar LiftoverVcf I=results/LIFTOVER/{wildcards.sample}_PREP.vcf.gz O=results/LIFTOVER/{wildcards.sample}_LIFTOVER.vcf.gz C={params.chainFile} REJECT=results/LIFTOVER/{wildcards.sample}_REJECTED.vcf.gz R={params.ref}"
+            r"plink2 --vcf results/PREP/{wildcards.sample}.vcf.gz --set-all-var-ids @:#\$r-\$a --allow-extra-chr --new-id-max-allele-len 40 truncate --chr 1-22 --out results/LIFTOVER/{wildcards.sample}_PREP --export vcf-4.2 bgz --output-chr chr26"
         ),
         shell(
-            "bcftools sort -m 1G -T results/LIFTOVER -O z -o results/LIFTOVER/{wildcards.sample}.vcf.gz results/LIFTOVER/{wildcards.sample}_LIFTOVER.vcf.gz"
+            r"sleep 60; tabix -p vcf results/LIFTOVER/{wildcards.sample}_PREP.vcf.gz"
+        ),
+        shell(
+            r"java -Xmx{params.mem} -jar tools/picard.jar LiftoverVcf I=results/LIFTOVER/{wildcards.sample}_PREP.vcf.gz O=results/LIFTOVER/{wildcards.sample}_LIFTOVER.vcf.gz C={params.chainFile} REJECT=results/LIFTOVER/{wildcards.sample}_REJECTED.vcf.gz R={params.ref}"
+        ),
+        shell(
+            r"bcftools sort -m 1G -T results/LIFTOVER -O z -o results/LIFTOVER/{wildcards.sample}.vcf.gz results/LIFTOVER/{wildcards.sample}_LIFTOVER.vcf.gz"
         ),
     # TODO: Add conditionals for other human reference genome builds
     else:
@@ -73,20 +75,20 @@ if listed_refs != "GRCh38":
                 wildcards.sample
             )
         ),
-        shell("touch results/LIFTOVER/{wildcards.sample}_EXCLUDE.dat"),
+        shell(r"touch results/LIFTOVER/{wildcards.sample}_EXCLUDE.dat"),
         shell(
-            "plink --map input/{wildcards.sample}.map --ped input/{wildcards.sample}.ped --allow-extra-chr --chr 1-22 --recode vcf --keep-allele-order --exclude {params.exclusionList} --out results/LIFTOVER/{wildcards.sample}"
+            r"plink --map input/{wildcards.sample}.map --ped input/{wildcards.sample}.ped --allow-extra-chr --chr 1-22 --recode vcf --keep-allele-order --exclude {params.exclusionList} --out results/LIFTOVER/{wildcards.sample}"
         ),
     # shell("bgzip results/LIFTOVER/{wildcards.sample}.vcf"),
-    shell("sleep 1m; tabix -f -p vcf results/LIFTOVER/{wildcards.sample}.vcf.gz"),
+    shell(r"sleep 1m; tabix -f -p vcf results/LIFTOVER/{wildcards.sample}.vcf.gz"),
     shell(
-        "echo 'results/LIFTOVER/{wildcards.sample}.vcf.gz' >> results/LIFTOVER/merge.list"
+        r"echo 'results/LIFTOVER/{wildcards.sample}.vcf.gz' >> results/LIFTOVER/merge.list"
     )
 else:
     shell(
-        "plink2 --vcf results/PREP/{wildcards.sample}.vcf.gz --set-all-var-ids @:#\$r-\$a --allow-extra-chr --new-id-max-allele-len 400 truncate --chr 1-22 --out results/LIFTOVER/{wildcards.sample} --export vcf-4.2 bgz --output-chr chr26"
+        r"plink2 --vcf results/PREP/{wildcards.sample}.vcf.gz --set-all-var-ids @:#\$r-\$a --allow-extra-chr --new-id-max-allele-len 400 truncate --chr 1-22 --out results/LIFTOVER/{wildcards.sample} --export vcf-4.2 bgz --output-chr chr26"
     ),
-    shell("sleep 60; tabix -p vcf results/LIFTOVER/{wildcards.sample}.vcf.gz"),
+    shell(r"sleep 60; tabix -p vcf results/LIFTOVER/{wildcards.sample}.vcf.gz"),
     shell(
-        "echo 'results/LIFTOVER/{wildcards.sample}.vcf.gz' >> results/LIFTOVER/merge.list"
+        r"echo 'results/LIFTOVER/{wildcards.sample}.vcf.gz' >> results/LIFTOVER/merge.list"
     )

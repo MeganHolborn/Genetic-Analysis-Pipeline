@@ -125,18 +125,18 @@ rule VALIDATE:
         shell(
             r"tools/gatk-4.2.0.0/gatk SelectVariants -V results/PREP/{wildcards.sample}_NEW_INFO.vcf.gz --select-type-to-include SNP --select-type-to-include INDEL --select-type-to-exclude MIXED --select-type-to-exclude MNP --select-type-to-exclude SYMBOLIC --exclude-filtered -O results/PREP/{wildcards.sample}_FILTERED.vcf.gz"
         ),
-        # Subset samples according to user defined list and remove variants that do not pass QC:
-        shell(
-            r"bcftools view -S input/{wildcards.sample}_samples_subset.txt -f 'PASS' -O z -o results/PREP/{wildcards.sample}_FILTERED2.vcf.gz results/PREP/{wildcards.sample}_FILTERED.vcf.gz"
-        )
+        # # Subset samples according to user defined list and remove variants that do not pass QC:
+        # shell(
+        #     r"bcftools view -S input/{wildcards.sample}_samples_subset.txt -f 'PASS' -O z -o results/PREP/{wildcards.sample}_FILTERED2.vcf.gz results/PREP/{wildcards.sample}_FILTERED.vcf.gz"
+        # ),
         # Normalise variants - split multiallelic records, left align variants, and ensure variant parsimony
         shell(
-            r"bcftools norm -m -any results/PREP/{wildcards.sample}_FILTERED2.vcf.gz -O z -o results/PREP/{wildcards.sample}_NORMALISED.vcf.gz"
+            r"bcftools norm -m -any results/PREP/{wildcards.sample}_FILTERED.vcf.gz -O z -o results/PREP/{wildcards.sample}_NORMALISED.vcf.gz"
         ),
         # Ensure consistency of chromosome nomenclature for each dataset and sort by chromosome
         shell(
             r"bcftools annotate --rename-chrs input/rename_chr.txt results/PREP/{wildcards.sample}_NORMALISED.vcf.gz | bcftools sort -m 1G -T results/PREP -O z -o results/PREP/{wildcards.sample}.vcf.gz"
-        )
+        ),
         shell(
             r"tabix -p vcf results/PREP/{wildcards.sample}.vcf.gz"
         )       
@@ -171,7 +171,7 @@ rule LIFTOVER:
             if i["version"] == "GRCh38"
                 ),
         ),
-        mem=f'-Xmx{search("memory", "LIFTOVER")} ',
+        mem=search("memory", "LIFTOVER"),
     resources:
         cpus=search("cores", "LIFTOVER"),
         nodes=search("nodes", "LIFTOVER"),
@@ -223,8 +223,8 @@ rule ALL_COLLATE:
         elif datasets["dataset_name"].size < 1:
             pass
         else:
-            shell(f"cp results/LIFTOVER/{datasets['dataset_name'][0]}.vcf.gz results/COLLATE/ALL.vcf.gz"),
-            shell(f"cp results/LIFTOVER/{datasets['dataset_name'][0]}.vcf.gz.tbi results/COLLATE/ALL.vcf.gz.tbi"),
+            shell(f"cp results/LIFTOVER/{datasets['dataset_name'][0].strip()}.vcf.gz results/COLLATE/ALL.vcf.gz"),
+            shell(f"cp results/LIFTOVER/{datasets['dataset_name'][0].strip()}.vcf.gz.tbi results/COLLATE/ALL.vcf.gz.tbi"),
 
 
 rule ANNOTATE:
