@@ -42,7 +42,7 @@ transcripts = read_csv(join("input", "transcripts.csv"), header=0)
 
 # DEFINE CONTEXT-VARIABLES:
 finalExtensions = ["acount", "hardy", "smiss", "vmiss"]  # "prune.in", "prune.out",
-clusters = set([cluster for cluster in samples.keys() if cluster not in ["sample_name", "dataset"]])
+clusters = ["SUPER", "SUB"]
 bExtensions = ["bed", "bim", "fam"]
 tExtensions = ["map", "ped"]
 
@@ -68,7 +68,7 @@ rule all:
                 extension=finalExtensions,
                 location=locations["location_name"],
             )
-            for cluster in clusters
+            for cluster in ["SUPER", "SUB"]
         ],
         # expand(
         #     [
@@ -223,8 +223,12 @@ rule ALL_COLLATE:
         elif datasets["dataset_name"].size < 1:
             pass
         else:
-            shell(f"cp results/LIFTOVER/{datasets['dataset_name'][0].strip()}.vcf.gz results/COLLATE/ALL.vcf.gz"),
-            shell(f"cp results/LIFTOVER/{datasets['dataset_name'][0].strip()}.vcf.gz.tbi results/COLLATE/ALL.vcf.gz.tbi"),
+            shell(r"mkdir -p results/COLLATE")
+
+            liftover_file_path = f"results/LIFTOVER/{datasets['dataset_name'][0]}.vcf.gz".replace(" ", "")
+            liftover_index_path = f"{liftover_file_path}.tbi".replace(" ", "")
+            shell(f"cp {liftover_file_path} results/COLLATE/ALL.vcf.gz"),
+            shell(f"cp {liftover_index_path} results/COLLATE/ALL.vcf.gz.tbi")
 
 
 rule ANNOTATE:
@@ -274,27 +278,21 @@ rule FILTER:
         walltime=search("walltime", "FILTER"),
     run:
         # Filter out variants with >= 100% missingness
-        shell(
-            r"plink2 --chr 1-22 --allow-extra-chr --vcf {input} --geno 1.0 --output-chr chr26 --export vcf-4.2 bgz --out results/FILTER/ALL_FILTERED1"
-        ),
+        shell(r"plink2 --chr 1-22 --allow-extra-chr --vcf {input} --geno 1.0 --output-chr chr26 --export vcf-4.2 bgz --out results/FILTER/ALL_FILTERED1"),
+
         # Filter out samples with >= 100% missingness
-        shell(
-            r"plink2 --chr 1-22 --allow-extra-chr --vcf results/FILTER/ALL_FILTERED1.vcf.gz --mind 1.0 --output-chr chr26 --export vcf-4.2 bgz --out results/FILTER/ALL_FILTERED2"
-        ),
+        shell(r"plink2 --chr 1-22 --allow-extra-chr --vcf results/FILTER/ALL_FILTERED1.vcf.gz --mind 1.0 --output-chr chr26 --export vcf-4.2 bgz --out results/FILTER/ALL_FILTERED2"),
+        
         # Replace underscores in sample IDs with hyphens. Plink 1.9 recognises underscores as a divisor of sample ID and family ID, which may not be true in our use case. Keeping the underscores interferes with IBD pruning steps.
-        shell(
-            r"bcftools query -l results/FILTER/ALL_FILTERED2.vcf.gz | sed 's/_/-/g' > results/FILTER/new_sample_names.txt; bcftools reheader -s results/FILTER/new_sample_names.txt results/FILTER/ALL_FILTERED2.vcf.gz -o results/FILTER/ALL_RENAMED.vcf.gz"
-        )
+        shell(r"bcftools query -l results/FILTER/ALL_FILTERED2.vcf.gz | sed 's/_/-/g' > results/FILTER/new_sample_names.txt; bcftools reheader -s results/FILTER/new_sample_names.txt results/FILTER/ALL_FILTERED2.vcf.gz -o results/FILTER/ALL_RENAMED.vcf.gz"),
+        shell(r"sed -i 's/_/-/g' input/samples.csv results/REFERENCE/cluster_SUB.txt results/REFERENCE/cluster_SUPER.txt"),
+
         # Filter out first- and second-degree related individuals and duplicate samples
         ## Create a linkage disequilibrium-pruned subset of the data and perform IBD calculations on this data subset. 
-        shell(
-            r"plink2 --chr 1-22 --set-all-var-ids @:#\$r-\$a --new-id-max-allele-len 1033 --rm-dup exclude-mismatch --vcf results/FILTER/ALL_RENAMED.vcf.gz --indep-pairwise 50 5 0.5 --bad-ld --output-chr chr26 --out results/FILTER/ALL_LD; plink2 --allow-extra-chr --vcf results/FILTER/ALL_RENAMED.vcf.gz --extract results/FILTER/ALL_LD.prune.in --output-chr chr26 --export vcf-4.2 bgz --out results/FILTER/ALL_PRUNED; plink --allow-extra-chr --vcf results/FILTER/ALL_PRUNED.vcf.gz --genome --min 0.2 --recode vcf-iid bgz --output-chr chr26 --out results/FILTER/ALL_UNRELATED"
-        ),
+        shell(r"plink2 --chr 1-22 --set-all-var-ids @:#\$r-\$a --new-id-max-allele-len 1033 --rm-dup exclude-mismatch --vcf results/FILTER/ALL_RENAMED.vcf.gz --indep-pairwise 50 5 0.5 --bad-ld --output-chr chr26 --out results/FILTER/ALL_LD; plink2 --allow-extra-chr --vcf results/FILTER/ALL_RENAMED.vcf.gz --extract results/FILTER/ALL_LD.prune.in --output-chr chr26 --export vcf-4.2 bgz --out results/FILTER/ALL_PRUNED; plink --allow-extra-chr --vcf results/FILTER/ALL_PRUNED.vcf.gz --genome --min 0.2 --recode vcf-iid bgz --output-chr chr26 --out results/FILTER/ALL_UNRELATED"),
+        
         ## Extract the sample IDs of all unrelated individuals and subset the filtered data by these individuals
-        shell(
-            r"bcftools query -l results/FILTER/ALL_UNRELATED.vcf.gz > results/FILTER/unrelated_samples.txt; bcftools view results/FILTER/ALL_RENAMED.vcf.gz -S results/FILTER/unrelated_samples.txt -o {output} -O z"
-        ),
-
+        shell(r"bcftools query -l results/FILTER/ALL_UNRELATED.vcf.gz > results/FILTER/unrelated_samples.txt; bcftools view results/FILTER/ALL_RENAMED.vcf.gz -S results/FILTER/unrelated_samples.txt -o {output} -O z"),
 
 
 rule ADMIXTURE:
@@ -409,7 +407,7 @@ rule PLINK:
                 ],
                 extension=finalExtensions,
             )
-            for cluster in clusters
+            for cluster in ["SUPER", "SUB"]
         ],
     params:
         prefix="ALL_{location}",
@@ -419,10 +417,11 @@ rule PLINK:
         queue=search("queue", "PLINK"),
         walltime=search("walltime", "PLINK"),
     run:
+        # pass
         for cluster in clusters:
             shell(
-                r"plink2 --allow-extra-chr --vcf {input.vcf} --freq counts --export vcf-4.2 bgz --out results/FINAL/{cluster}/{params.prefix}"
+                "plink2 --allow-extra-chr --vcf {input.vcf} --freq counts --export vcf-4.2 bgz --out results/FINAL/{cluster}/{params.prefix}"
             ),
             shell(
-                r"plink2 --allow-extra-chr --vcf {input.vcf} --pheno iid-only results/REFERENCE/cluster_{cluster}.txt --loop-cats {cluster} --freq counts --missing --hardy midp --out results/FINAL/{cluster}/{params.prefix}"
+                "plink2 --allow-extra-chr --vcf {input.vcf} --pheno iid-only results/REFERENCE/cluster_{cluster}.txt --loop-cats {cluster} --freq counts --missing --hardy midp --out results/FINAL/{cluster}/{params.prefix}"
             )
